@@ -1,0 +1,69 @@
+name: Excel Custom Diff (Node)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  run-custom-diff:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Detect changed .xlsx files
+        id: changes
+        run: |
+          CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} | grep -E '\.xlsx$' || true)
+          echo "list<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          if [ -z "$CHANGED" ]; then
+            echo "has=false" >> $GITHUB_OUTPUT
+          else
+            echo "has=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run custom diff (Node)
+        if: steps.changes.outputs.has == 'true'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          XLSX_LIST: ${{ steps.changes.outputs.list }}
+        run: node scripts/custom-diff.js
+
+      - name: Upload artifact
+        if: steps.changes.outputs.has == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: custom-diff
+          path: custom-diff.md
+
+      - name: Comment on PR
+        if: steps.changes.outputs.has == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('custom-diff.md', 'utf8');
+            const { owner, repo, number } = context.issue;
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: number,
+              body
+            });
