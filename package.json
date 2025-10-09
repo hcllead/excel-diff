@@ -1,0 +1,29 @@
+{
+  "name": "excel-diff",
+  "version": "1.0.0",
+  "description": "A excel comparison between same two version of file",
+  "homepage": "https://github.com/hcllead/excel-diff#readme",
+  "bugs": {
+    "url": "https://github.com/hcllead/excel-diff/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hcllead/excel-diff.git"
+  },
+  "license": "ISC",
+  "author": "Nitin Singh",
+  "main": "excel-diff.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "type": "module",
+  "dependencies": {
+    "diff": "^8.0.2",
+    "exceljs": "^4.4.0",
+    "json-diff": "^1.0.6"
+  },
+  "devDependencies": {
+    "xlsx": "^0.18.5"
+  }
+
+}
