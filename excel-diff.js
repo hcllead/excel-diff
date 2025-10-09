@@ -1,4 +1,4 @@
- console.log('Checking ....')
+
 import { readFileSync, existsSync } from 'fs';
 import { read, utils } from 'xlsx';
 
@@ -35,23 +35,22 @@ export function printDiff(diffs) {
     diffs.unchanged.forEach(row => console.log(row));
 }
 
-console.log( process.argv.length );
+
 
 // ✅ Entry Point
-if (process.argv.length === 4) {
-    const oldFile = process.argv[2];
-    const newFile = process.argv[3];
+if (process.argv.length <= 0 ) {
+   console.log('Invalid Arguments');
+   process.exit(1);
+}
+
+    const oldFile = process.argv[3];
+    const newFile = process.argv[2];
 
     const oldSheet = readExcelFile(oldFile);
     const newSheet = readExcelFile(newFile);
-
-    console.log('Old Sheet', oldSheet);
-    console.log('New Sheet', newSheet );
 
     const difference = compareSheets(oldSheet, newSheet);
     printDiff(difference);
 
 
-} else {
-    console.log('Usage: node excel-diff.js <old_file.xlsx> <new_file.xlsx>');
-}
+
