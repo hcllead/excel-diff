@@ -14,7 +14,8 @@
   "author": "Nitin Singh",
   "main": "excel-diff.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky"
   },
   "type": "module",
   "dependencies": {
@@ -23,7 +24,7 @@
     "json-diff": "^1.0.6"
   },
   "devDependencies": {
+    "husky": "^9.1.7",
     "xlsx": "^0.18.5"
   }
-
 }
