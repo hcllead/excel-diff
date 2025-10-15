@@ -1,8 +1,11 @@
 import XLSX from 'xlsx';
 import fs from 'fs';
 
+const xlsxFilePath = 'example.xlsx';
+const outputFilePath = 'output.md'
+
 // Read Excel file
-const workbook = XLSX.readFile('example.xlsx');
+const workbook = XLSX.readFile(xlsxFilePath);
 let mdContent = '';
 
 const colors = ['red', 'yellow', 'green'];
@@ -29,4 +32,4 @@ workbook.SheetNames.forEach(sheetName => {
   mdContent += '\n\n';
 });
 
-fs.writeFileSync('output.md', mdContent);
+fs.writeFileSync(outputFilePath, mdContent);
