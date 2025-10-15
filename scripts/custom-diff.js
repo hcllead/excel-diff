@@ -9,9 +9,6 @@ const BASE = process.env.BASE_SHA;
 const HEAD = process.env.HEAD_SHA;
 const LIST = (process.env.XLSX_LIST || "").split("\n").filter(Boolean);
 
-// helpers
-const sh = (cmd) => execSync(cmd, { encoding: "utf8" }).trim();
-
 function writeBlobToTmp(sha, filePath) {
   const tmp = path.join(os.tmpdir(), `${sha}-${filePath.replace(/[\\/]/g, "__")}`);
   try {
@@ -19,7 +16,7 @@ function writeBlobToTmp(sha, filePath) {
     fs.writeFileSync(tmp, buf);
     return tmp;
   } catch {
-    return null; // added/removed
+    return null;
   }
 }
 
@@ -68,7 +65,6 @@ function diffCellMaps(aMap, bMap) {
 }
 
 function buildVisualTable(sheetName, diffs, aMap, bMap) {
-  // Determine range for visualization
   const allAddrs = new Set([...Object.keys(aMap[sheetName] || {}), ...Object.keys(bMap[sheetName] || {})]);
   if (allAddrs.size === 0) return "<p>No data</p>";
 
@@ -92,7 +88,6 @@ function buildVisualTable(sheetName, diffs, aMap, bMap) {
   }
 
   let html = `<table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;">`;
-  // Header row
   html += `<tr><th></th>`;
   for (const col of uniqueCols) html += `<th>${col}</th>`;
   html += `</tr>`;
@@ -105,11 +100,11 @@ function buildVisualTable(sheetName, diffs, aMap, bMap) {
       let cellHtml = "";
       if (diff) {
         if (diff.type === "changed") {
-          cellHtml = `<td style="background-color:yellow">$$\\color{blue}{${diff.from}→${diff.to}}$$</td>`;
+          cellHtml = `<td style="background-color:yellow"><s>${diff.from}</s> → $$\\color{orange}{${diff.to}}$$</td>`;
         } else if (diff.type === "added") {
           cellHtml = `<td style="background-color:green">$$\\color{white}{${diff.to}}$$</td>`;
         } else {
-          cellHtml = `<td style="background-color:red">$$\\color{white}{${diff.from}}$$</td>`;
+          cellHtml = `<td style="background-color:red"><s>$$\\color{red}{${diff.from}}$$</s></td>`;
         }
       } else {
         const val = bMap[sheetName]?.[addr] || aMap[sheetName]?.[addr] || "";
