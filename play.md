@@ -1,1 +1,1 @@
-<code style="color : red">text</code>
+<code style="color : green">text</code>
