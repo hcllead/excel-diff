@@ -100,11 +100,11 @@ function buildVisualTable(sheetName, diffs, aMap, bMap) {
       let cellHtml = "";
       if (diff) {
         if (diff.type === "changed") {
-          cellHtml = `<td style="background-color:yellow"><del>${diff.from}<del> → $$\\color{orange}{${diff.to}}$$</td>`;
+          cellHtml = `<td style="background-color:yellow"><del>${diff.from}</del> → $$\\color{orange}{${diff.to}}$$</td>`;
         } else if (diff.type === "added") {
           cellHtml = `<td style="background-color:green">$$\\color{green}{${diff.to}}$$</td>`;
         } else {
-          cellHtml = `<td style="background-color:red"><del>$$\\color{red}{${diff.from}}$$<del></td>`;
+          cellHtml = `<td style="background-color:red"><del>$$\\color{red}{${diff.from}}$$</del></td>`;
         }
       } else {
         const val = bMap[sheetName]?.[addr] || aMap[sheetName]?.[addr] || "";
@@ -125,7 +125,7 @@ md.push(`Changed Excel files: **${LIST.length}**`);
 md.push("");
 md.push(`**Legend:**  
 - Yellow = Modified (~~old~~ → $$\\color{orange}{new}$$)  
-- Red = Deleted (~~$$\\color{red}{old}$$~~ ) 
+- Red = Deleted ($$\\color{red}{~~old~~}$$ ) 
 - Green = Added ($$\\color{green}{new}$$)`);
 
 for (const file of LIST) {
