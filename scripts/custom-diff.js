@@ -126,7 +126,7 @@ md.push(`Changed Excel files: **${LIST.length}**`);
 md.push("");
 md.push(`**Legend:**  
 - Yellow = Modified (~~old~~ → $$\\color{orange}{new}$$)  
-- Red = Deleted ($$\\color{red}~~{old}~~$$)  
+- Red = Deleted ($$\\color{red}{old}$$)  
 - Green = Added ($$\\color{green}{new}$$)`);
 
 for (const file of LIST) {
