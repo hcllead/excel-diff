@@ -100,11 +100,11 @@ function buildVisualTable(sheetName, diffs, aMap, bMap) {
       let cellHtml = "";
       if (diff) {
         if (diff.type === "changed") {
-          cellHtml = `<td style="background-color:yellow"><s>${diff.from}</s> → $$\\color{orange}{${diff.to}}$$</td>`;
+          cellHtml = `<td style="background-color:yellow">~~${diff.from}~~ → $$\\color{orange}{${diff.to}}$$</td>`;
         } else if (diff.type === "added") {
-          cellHtml = `<td style="background-color:green">$$\\color{white}{${diff.to}}$$</td>`;
+          cellHtml = `<td style="background-color:green">$$\\color{green}{${diff.to}}$$</td>`;
         } else {
-          cellHtml = `<td style="background-color:red"><s>$$\\color{red}{${diff.from}}$$</s></td>`;
+          cellHtml = `<td style="background-color:red">~~$$\\color{red}{${diff.from}}$$~~</td>`;
         }
       } else {
         const val = bMap[sheetName]?.[addr] || aMap[sheetName]?.[addr] || "";
@@ -124,6 +124,10 @@ md.push(`# Custom Diff Report (Excel)`);
 md.push(`Base: \`${BASE}\` → Head: \`${HEAD}\``);
 md.push(`Changed Excel files: **${LIST.length}**`);
 md.push("");
+md.push(`**Legend:**  
+- Yellow = Modified (~~old~~ → $$\\color{orange}{new}$$)  
+- Red = Deleted (~~$$\\color{red}{old}$$~~)  
+- Green = Added ($$\\color{green}{new}$$)`);
 
 for (const file of LIST) {
   md.push(`## ${file}`);
@@ -169,4 +173,4 @@ for (const file of LIST) {
 }
 
 fs.writeFileSync("custom-diff.md", md.join("\n"), "utf8");
-console.log("Wrote custom-diff.md with visual tables");
+console.log("Wrote custom-diff.md with visual tables and strike-through");
