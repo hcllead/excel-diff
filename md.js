@@ -1,24 +1,30 @@
 import XLSX from 'xlsx';
 import fs from 'fs';
 
-
-
 // Read Excel file
 const workbook = XLSX.readFile('example.xlsx');
-const sheetName = workbook.SheetNames[0];
-const sheet = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+let mdContent = '';
 
-// Convert to Markdown table
-const headers = Object.keys(sheet[0]);
-let mdTable = `| ${headers.join(' | ')} |\n`;
-mdTable += `| ${headers.map(() => '---').join(' | ')} |\n`;
+workbook.SheetNames.forEach(sheetName => {
+  const sheet = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+  if (sheet.length === 0) return;
 
+  // Add sheet title
+  mdContent += `## ${sheetName}\n\n`;
 
-sheet.forEach(row => {
-  mdTable += `| ${headers.map(h => row[h] || '').join(' | ')} |\n`;
+  // Create table headers
+  const headers = Object.keys(sheet[0]);
+  mdContent += `| ${headers.join(' | ')} |\n`;
+  mdContent += `| ${headers.map(() => '---').join(' | ')} |\n`;
+
+  // Add rows
+  sheet.forEach(row => {
+    mdContent += `| ${headers.map(h => row[h] || '').join(' | ')} |\n`;
+  });
+
+  mdContent += '\n\n';
 });
 
 // Save to .md file
-fs.writeFileSync('output.md', mdTable);
+fs.writeFileSync('output.md', mdContent);
 console.log('Markdown file created: output.md');
-
