@@ -1,4 +1,4 @@
-// scripts/custom-diff-visual.js
+// scripts/custom-diff.js
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -9,21 +9,27 @@ const BASE = process.env.BASE_SHA;
 const HEAD = process.env.HEAD_SHA;
 const LIST = (process.env.XLSX_LIST || "").split("\n").filter(Boolean);
 
+// helpers
+const sh = (cmd) => execSync(cmd, { encoding: "utf8" }).trim();
+
 function writeBlobToTmp(sha, filePath) {
-  const tmp = path.join(os.tmpdir(), `${sha}-${filePath.replace(/[\\/]/g, "__")}`);
+  const tmp = path.join(
+    os.tmpdir(),
+    `${sha}-${filePath.replace(/[\\/]/g, "__")}`
+  );
   try {
     const buf = execSync(`git show ${sha}:${filePath}`, { encoding: "buffer" });
     fs.writeFileSync(tmp, buf);
     return tmp;
   } catch {
-    return null;
+    return null; // added/removed
   }
 }
 
 function workbookToCellMap(tmpXlsxPath) {
   if (!tmpXlsxPath || !fs.existsSync(tmpXlsxPath)) return {};
   const wb = XLSX.read(fs.readFileSync(tmpXlsxPath));
-  const map = {};
+  const map = {}; // { "Sheet1": { "A1": "val", ... } }
   for (const sheetName of wb.SheetNames) {
     const ws = wb.Sheets[sheetName];
     const cells = {};
@@ -33,6 +39,7 @@ function workbookToCellMap(tmpXlsxPath) {
         const addr = XLSX.utils.encode_cell({ r, c });
         const cell = ws[addr];
         if (cell && cell.v !== undefined) {
+          // Normalize values to strings for stable compare
           cells[addr] = String(cell.v);
         }
       }
@@ -43,6 +50,7 @@ function workbookToCellMap(tmpXlsxPath) {
 }
 
 function diffCellMaps(aMap, bMap) {
+  // returns array of {sheet, addr, type, from?, to?}
   const diffs = [];
   const sheets = new Set([...Object.keys(aMap), ...Object.keys(bMap)]);
   for (const sheet of sheets) {
@@ -60,74 +68,34 @@ function diffCellMaps(aMap, bMap) {
         diffs.push({ sheet, addr, type: "changed", from: av, to: bv });
       }
     }
+    // Optional: row/col summaries
   }
   return diffs;
 }
 
-function buildVisualTable(sheetName, diffs, aMap, bMap) {
-  const allAddrs = new Set([...Object.keys(aMap[sheetName] || {}), ...Object.keys(bMap[sheetName] || {})]);
-  if (allAddrs.size === 0) return "<p>No data</p>";
-
-  const rows = [];
-  const cols = [];
-
-  for (const addr of allAddrs) {
-    const match = addr.match(/^([A-Z]+)(\d+)$/i);
-    if (match) {
-      cols.push(match[1]);
-      rows.push(parseInt(match[2], 10));
-    }
-  }
-
-  const uniqueCols = [...new Set(cols)].sort((a, b) => a.localeCompare(b));
-  const uniqueRows = [...new Set(rows)].sort((a, b) => a - b);
-
-  const diffMap = new Map();
+function summarizeByRowCol(diffs) {
+  // returns { "<sheet>": { rows: Map<row, count>, cols: Map<col, count> } }
+  const sum = {};
   for (const d of diffs) {
-    diffMap.set(d.addr, d);
-  }
-
-  let html = `<table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;">`;
-  html += `<tr><th></th>`;
-  for (const col of uniqueCols) html += `<th>${col}</th>`;
-  html += `</tr>`;
-
-  for (const r of uniqueRows) {
-    html += `<tr><th>${r}</th>`;
-    for (const col of uniqueCols) {
-      const addr = `${col}${r}`;
-      const diff = diffMap.get(addr);
-      let cellHtml = "";
-      if (diff) {
-        if (diff.type === "changed") {
-          cellHtml = `<td style="background-color:yellow">~~${diff.from}~~ → $$\\color{orange}{${diff.to}}$$</td>`;
-        } else if (diff.type === "added") {
-          cellHtml = `<td style="background-color:green">$$\\color{green}{${diff.to}}$$</td>`;
-        } else {
-          cellHtml = `<td style="background-color:red">$$~~\\color{red}{${diff.from}}~~$$</td>`;
-        }
-      } else {
-        const val = bMap[sheetName]?.[addr] || aMap[sheetName]?.[addr] || "";
-        cellHtml = `<td>${val}</td>`;
-      }
-      html += cellHtml;
+    const sheet = d.sheet;
+    sum[sheet] ||= { rows: new Map(), cols: new Map() };
+    // Parse "A1" -> col "A", row 1
+    const match = d.addr.match(/^([A-Z]+)(\d+)$/i);
+    if (match) {
+      const col = match[1].toUpperCase();
+      const row = parseInt(match[2], 10);
+      sum[sheet].rows.set(row, (sum[sheet].rows.get(row) || 0) + 1);
+      sum[sheet].cols.set(col, (sum[sheet].cols.get(col) || 0) + 1);
     }
-    html += `</tr>`;
   }
-  html += `</table>`;
-  return html;
+  return sum;
 }
 
-// Main report
 let md = [];
 md.push(`# Custom Diff Report (Excel)`);
 md.push(`Base: \`${BASE}\` → Head: \`${HEAD}\``);
 md.push(`Changed Excel files: **${LIST.length}**`);
 md.push("");
-md.push(`**Legend:**  
-- Yellow = Modified (~~old~~ → $$\\color{orange}{new}$$)  
-- Red = Deleted ($$\\color{red}{old}$$)  
-- Green = Added ($$\\color{green}{new}$$)`);
 
 for (const file of LIST) {
   md.push(`## ${file}`);
@@ -166,11 +134,52 @@ for (const file of LIST) {
   md.push("");
 
   for (const [sheet, diffs] of bySheet) {
-    md.push(`### Sheet: ${sheet}`); // Strike sheet name for consistency
-    md.push(buildVisualTable(sheet, diffs, aMap, bMap));
+    // Summaries by row/col
+    const summary = summarizeByRowCol(diffs);
+    const s = summary[sheet];
+
+    md.push(`### Sheet: \`${sheet}\``);
+    if (s) {
+      // Row summary (top 10)
+      const topRows = [...s.rows.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+      const topCols = [...s.cols.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+      md.push(
+        `**Rows touched (top 10):** ${
+          topRows.map(([r, c]) => `${r}(${c})`).join(", ") || "—"
+        }`
+      );
+      md.push(
+        `**Cols touched (top 10):** ${
+          topCols.map(([c, k]) => `${c}(${k})`).join(", ") || "—"
+        }`
+      );
+    }
+    md.push("");
+    md.push(`| Cell | Change |`);
+    md.push(`|---|---|`);
+    // Limit table size for comment readability
+    const MAX = 200;
+    for (const d of diffs.slice(0, MAX)) {
+      if (d.type === "changed") {
+        md.push(`| ${sheet}!${d.addr} | \`${d.from}\` → \`${d.to}\` |`);
+      } else if (d.type === "added") {
+        md.push(`| ${sheet}!${d.addr} | ⊕ \`${d.to}\` |`);
+      } else {
+        md.push(`| ${sheet}!${d.addr} | ⊖ \`${d.from}\` |`);
+      }
+    }
+    if (diffs.length > MAX) {
+      md.push(
+        `_…and ${diffs.length - MAX} more cells (see artifact for full list)._`
+      );
+    }
     md.push("");
   }
 }
 
 fs.writeFileSync("custom-diff.md", md.join("\n"), "utf8");
-console.log("Wrote custom-diff.md with visual tables and strike-through");
+console.log("Wrote custom-diff.md");
