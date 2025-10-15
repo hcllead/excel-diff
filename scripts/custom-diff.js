@@ -166,7 +166,7 @@ for (const file of LIST) {
   md.push("");
 
   for (const [sheet, diffs] of bySheet) {
-    md.push(`### Sheet: \`${sheet}\``);
+    md.push(`### Sheet: ~~${sheet}~~`); // Strike sheet name for consistency
     md.push(buildVisualTable(sheet, diffs, aMap, bMap));
     md.push("");
   }
