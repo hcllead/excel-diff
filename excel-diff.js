@@ -9,9 +9,7 @@ export function readExcelFile(filePath) {
         return [];
     }
     const workbook = read(readFileSync(filePath));
-
-    // TODO : Need to add more sheets , now only taking first sheet.
-
+    const sheetName = workbook.SheetNames[0]; // First sheet only
     return utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
 }
 
@@ -33,6 +31,8 @@ export function printDiff(diffs) {
     diffs.added.forEach(row => console.log(row));
     console.log("➖ Removed Rows:");
     diffs.removed.forEach(row => console.log(row));
+    console.log("✅ Unchanged Rows:");
+    diffs.unchanged.forEach(row => console.log(row));
 }
 
 
