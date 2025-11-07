@@ -9,10 +9,6 @@ const BASE = process.env.BASE_SHA;
 const HEAD = process.env.HEAD_SHA;
 const LIST = (process.env.XLSX_LIST || "").split("\n").filter(Boolean);
 
-console.log( 'Base', BASE );
-console.log( 'Head', HEAD );
-console.log('List', LIST );
-
 function writeBlobToTmp(sha, filePath) {
   const tmp = path.join(os.tmpdir(), `${sha}-${filePath.replace(/[\\/]/g, "__")}`);
   try {
